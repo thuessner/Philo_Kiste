@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fragenkiste">
+<title>Philosophische Fragenkiste</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=EB+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#3b2a1a; --gold:#b8862f; --gold-light:#e2bd6b; --terracotta:#a4472b; --parch:#f3e3bf;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100%;height:100%;overflow:hidden}
+  body{
+    font-family:'EB Garamond',Georgia,serif;
+    color:var(--ink);
+    background:#17202a;
+    -webkit-user-select:none;user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
+    -webkit-text-size-adjust:100%;
+  }
+
+  /* Feste 16:9-Tafel (1600 × 900), wird passend auf jeden Bildschirm skaliert */
+  #viewport{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(ellipse at 50% 0%, rgba(255,230,170,.25), transparent 60%),linear-gradient(180deg,#2c3b4a,#17202a)}
+  #board{
+    position:absolute;left:50%;top:50%;
+    width:1600px;height:900px;
+    transform-origin:center center;
+    transform:translate(-50%,-50%) scale(var(--s,1));
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(255,230,170,.35), transparent 60%),
+      linear-gradient(180deg,#2c3b4a 0%, #1f2a36 55%, #17202a 100%);
+    overflow:hidden;
+  }
+
+  .meander{
+    position:absolute;left:0;right:0;height:32px;
+    background-color:var(--terracotta);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='26' viewBox='0 0 40 26'%3E%3Cpath d='M0 22 H30 V4 H8 V16 H22 V10 H14' fill='none' stroke='%23f3e3bf' stroke-width='3'/%3E%3C/svg%3E");
+    background-repeat:repeat-x;background-size:49px 32px;background-position:center;
+    border-top:3px solid #6e2c18;border-bottom:3px solid #6e2c18;
+  }
+  .meander.top{top:0}
+  .meander.bottom{bottom:0}
+
+  header{position:absolute;top:44px;left:0;right:0;text-align:center;color:var(--parch)}
+  header h1{
+    font-family:'Cinzel',serif;font-weight:900;letter-spacing:.08em;font-size:62px;line-height:1;
+    color:var(--gold-light);
+    text-shadow:0 3px 0 #6b4a17, 0 0 30px rgba(226,189,107,.35);
+  }
+  header p{font-family:'Cinzel',serif;letter-spacing:.4em;font-size:20px;opacity:.75;margin-top:8px}
+
+  main{
+    position:absolute;top:140px;bottom:42px;left:40px;right:40px;
+    display:grid;grid-template-columns:100px 1fr 380px 100px;gap:30px;align-items:end;
+  }
+
+  .column{align-self:stretch;display:flex;flex-direction:column;align-items:center;padding-top:20px}
+  .column .capital{width:100px;height:30px;background:linear-gradient(#f4efe4,#cfc6b4);border-radius:4px;box-shadow:0 3px 0 #a99f8b}
+  .column .capital::before{content:"";display:block;width:124px;height:16px;margin-left:-12px;background:radial-gradient(circle at 13px 8px,#d8cfbd 7px,transparent 8px),radial-gradient(circle at 111px 8px,#d8cfbd 7px,transparent 8px),linear-gradient(#efe9dd,#d9d0bf);border-radius:8px}
+  .column .shaft{flex:1;width:72px;margin-top:2px;background:repeating-linear-gradient(90deg,#e9e2d4 0 8px,#cfc5b2 8px 11px,#f2ece2 11px 14px);box-shadow:inset 6px 0 10px rgba(0,0,0,.12), inset -10px 0 14px rgba(0,0,0,.18)}
+  .column .base{width:108px;height:24px;background:linear-gradient(#efe9dd,#bdb39f);border-radius:3px}
+
+  .stage{position:relative;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:10px}
+  .scroll-area{position:relative;width:100%;flex:1;margin-bottom:34px}
+
+  .scroll-wrap{
+    position:absolute;left:50%;bottom:0;width:840px;
+    transform:translate(-50%,230px) scale(.4);opacity:0;z-index:2;pointer-events:none;
+    transition:transform .9s cubic-bezier(.2,.9,.25,1.15), opacity .4s ease;
+  }
+  .scroll-wrap.up{transform:translate(-50%,0) scale(1);opacity:1}
+  .rod{position:relative;height:28px;margin:0 -22px;border-radius:14px;
+    background:linear-gradient(180deg,#8a5a2b,#5c3818 60%,#3e2510);box-shadow:0 4px 8px rgba(0,0,0,.4)}
+  .rod::before,.rod::after{content:"";position:absolute;top:-6px;width:26px;height:40px;border-radius:50%;
+    background:radial-gradient(circle at 40% 35%,var(--gold-light),var(--gold) 55%,#6b4a17)}
+  .rod::before{left:-10px}.rod::after{right:-10px}
+  .paper-outer{display:grid;grid-template-rows:0fr;transition:grid-template-rows .9s ease}
+  .scroll-wrap.open .paper-outer{grid-template-rows:1fr}
+  .paper-inner{overflow:hidden}
+  .paper{
+    background:
+      radial-gradient(ellipse at 20% 30%, rgba(160,110,50,.12), transparent 50%),
+      radial-gradient(ellipse at 80% 70%, rgba(160,110,50,.15), transparent 55%),
+      linear-gradient(90deg,#e6cf9c 0%,var(--parch) 8%,#f8ecd0 50%,var(--parch) 92%,#e6cf9c 100%);
+    padding:20px 50px 18px;text-align:center;min-height:200px;
+    display:flex;flex-direction:column;justify-content:center;gap:8px;
+  }
+  .paper .num{font-family:'Cinzel',serif;font-weight:700;letter-spacing:.3em;color:var(--terracotta);font-size:22px}
+  .paper .question{font-weight:600;font-size:43px;line-height:1.2;color:#2e1f10;
+    opacity:0;transform:translateY(10px);transition:opacity .6s ease .5s, transform .6s ease .5s}
+  .scroll-wrap.open .question{opacity:1;transform:none}
+  .paper .ornament{color:var(--gold);font-size:26px;line-height:1}
+
+  .chest{position:relative;width:320px;height:220px;z-index:3;cursor:pointer;filter:drop-shadow(0 18px 18px rgba(0,0,0,.5))}
+  .chest.shake{animation:shake .55s ease}
+  @keyframes shake{0%,100%{transform:rotate(0)}15%{transform:rotate(-3deg) translateY(-2px)}30%{transform:rotate(3deg)}45%{transform:rotate(-2.5deg) translateY(-3px)}60%{transform:rotate(2deg)}80%{transform:rotate(-1deg)}}
+  .lid{
+    position:absolute;left:-8px;right:-8px;top:0;height:78px;
+    border-radius:96px 96px 6px 6px / 64px 64px 6px 6px;
+    background:
+      linear-gradient(90deg,transparent 48px,var(--gold) 48px 63px,transparent 63px calc(100% - 63px),var(--gold) calc(100% - 63px) calc(100% - 48px),transparent calc(100% - 48px)),
+      repeating-linear-gradient(90deg,rgba(0,0,0,.06) 0 3px,transparent 3px 22px),
+      linear-gradient(180deg,#9a6534,#6e4220 70%,#4e2d14);
+    border:3px solid #3b220e;transform-origin:50% 100%;
+    transition:transform .7s cubic-bezier(.3,1.4,.5,1);z-index:4;
+  }
+  .chest.open .lid{transform:perspective(700px) rotateX(62deg)}
+  .glow{position:absolute;left:20px;right:20px;top:60px;height:44px;
+    background:radial-gradient(ellipse at center, rgba(255,220,130,.95), rgba(255,200,90,0) 70%);
+    opacity:0;transition:opacity .5s ease;z-index:1}
+  .chest.open .glow{opacity:1;animation:pulse 1.8s ease-in-out infinite}
+  @keyframes pulse{50%{transform:scaleX(1.15);opacity:.7}}
+  .body{position:absolute;left:0;right:0;bottom:0;height:146px;border:3px solid #3b220e;border-radius:4px 4px 10px 10px;
+    background:
+      linear-gradient(90deg,transparent 40px,var(--gold) 40px 55px,transparent 55px calc(100% - 55px),var(--gold) calc(100% - 55px) calc(100% - 40px),transparent calc(100% - 40px)),
+      repeating-linear-gradient(180deg,rgba(0,0,0,.08) 0 2px,transparent 2px 34px),
+      linear-gradient(180deg,#8a5a2b,#6a3f1d 60%,#4a2a12);
+    z-index:3;overflow:hidden}
+  .body .band{position:absolute;left:0;right:0;top:48px;height:26px;background-color:var(--terracotta);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='24' viewBox='0 0 28 24'%3E%3Cpath d='M0 20 H22 V4 H6 V14 H16 V9 H11' fill='none' stroke='%23e2bd6b' stroke-width='2.4'/%3E%3C/svg%3E");
+    background-size:30px 26px;border-top:2px solid #3b220e;border-bottom:2px solid #3b220e}
+  .lock{position:absolute;left:50%;top:70px;transform:translateX(-50%);width:46px;height:52px;border-radius:6px 6px 20px 20px;
+    background:radial-gradient(circle at 40% 30%,var(--gold-light),var(--gold) 60%,#6b4a17);border:2px solid #4a3010;z-index:5}
+  .lock::after{content:"";position:absolute;left:50%;top:16px;transform:translateX(-50%);width:10px;height:19px;border-radius:5px 5px 2px 2px;background:#2a1a08}
+  .chest-label{position:absolute;left:0;right:0;bottom:16px;text-align:center;font-family:'Cinzel',serif;font-weight:700;letter-spacing:.3em;font-size:17px;color:var(--gold-light);text-shadow:0 1px 0 #2a1a08}
+
+  .controls{margin-top:22px;display:flex;flex-direction:column;align-items:center;gap:12px;z-index:3}
+  button{font:inherit;-webkit-appearance:none;appearance:none}
+  button.draw{
+    font-family:'Cinzel',serif;font-weight:700;letter-spacing:.12em;font-size:36px;
+    color:#2a1a08;padding:16px 64px;min-width:440px;
+    border:4px solid #6b4a17;border-radius:60px;
+    background:linear-gradient(180deg,#f2d488,var(--gold) 60%,#8f6522);
+    box-shadow:0 7px 0 #5a3d12, 0 14px 26px rgba(0,0,0,.45);
+    cursor:pointer;transition:transform .1s ease, box-shadow .1s ease, filter .2s;
+  }
+  button.draw:active{transform:translateY(5px);box-shadow:0 2px 0 #5a3d12, 0 5px 12px rgba(0,0,0,.4)}
+  button.draw:disabled{filter:grayscale(.35) brightness(.85)}
+  .counter{color:var(--parch);opacity:.85;font-size:26px;font-style:italic}
+
+  .aristotle{display:flex;flex-direction:column;align-items:center;padding-bottom:16px}
+  .bubble{position:relative;background:var(--parch);border:3px solid #6b4a17;border-radius:22px;
+    padding:18px 22px;font-style:italic;font-size:28px;line-height:1.25;text-align:center;
+    margin-bottom:22px;min-height:120px;width:100%;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 18px rgba(0,0,0,.35);transition:opacity .35s ease, transform .35s ease}
+  .bubble::after{content:"";position:absolute;bottom:-15px;left:50%;margin-left:-13px;border:13px solid transparent;border-top-color:var(--parch);border-bottom:0}
+  .bubble.fade{opacity:0;transform:translateY(6px)}
+  .aristotle svg{width:300px;height:auto;filter:drop-shadow(0 12px 14px rgba(0,0,0,.45))}
+  .aristotle .bust{animation:breathe 5s ease-in-out infinite}
+  .aristotle .head{transform-origin:100px 160px}
+  .aristotle.nod .head{animation:nod .8s ease}
+  @keyframes breathe{50%{transform:translateY(-2px)}}
+  @keyframes nod{30%{transform:rotate(-5deg)}65%{transform:rotate(3deg)}}
+
+  .fs-btn{position:absolute;top:44px;right:40px;z-index:10;
+    font-family:'Cinzel',serif;font-size:20px;letter-spacing:.08em;color:var(--parch);
+    background:rgba(255,255,255,.08);border:2px solid rgba(243,227,191,.4);border-radius:14px;
+    padding:12px 18px;cursor:pointer}
+  .fs-btn[hidden]{display:none}
+
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div id="viewport">
+ <div id="board">
+  <div class="meander top"></div>
+  <button class="fs-btn" id="fsBtn" hidden>⛶ Vollbild</button>
+  <header>
+    <h1>Philosophische Fragenkiste</h1>
+    <p>ΦΙΛΟΣΟΦΙΑ · LIEBE ZUR WEISHEIT</p>
+  </header>
+
+  <main>
+    <div class="column" aria-hidden="true"><div class="capital"></div><div class="shaft"></div><div class="base"></div></div>
+
+    <section class="stage">
+      <div class="scroll-area"><div class="scroll-wrap" id="scroll" aria-live="polite">
+        <div class="rod"></div>
+        <div class="paper-outer"><div class="paper-inner">
+          <div class="paper">
+            <div class="num" id="num">FRAGE I</div>
+            <div class="question" id="question"></div>
+            <div class="ornament">❦</div>
+          </div>
+        </div></div>
+        <div class="rod"></div>
+      </div></div>
+
+      <div class="chest" id="chest" aria-hidden="true">
+        <div class="glow"></div>
+        <div class="lid"></div>
+        <div class="body"><div class="band"></div><div class="chest-label">ΕΥΔΑΙΜΟΝΙΑ</div></div>
+        <div class="lock"></div>
+      </div>
+
+      <div class="controls">
+        <button class="draw" id="drawBtn">Frage ziehen</button>
+        <div class="counter" id="counter"></div>
+      </div>
+    </section>
+
+    <aside class="aristotle" id="aristotle">
+      <div class="bubble" id="bubble">Χαίρετε! Seid gegrüßt! Was ist wohl ein gutes Leben?</div>
+      <svg viewBox="0 0 200 300" role="img" aria-label="Büste des Aristoteles">
+        <defs>
+          <linearGradient id="marble" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#f7f3ea"/>
+            <stop offset=".6" stop-color="#e3dccd"/>
+            <stop offset="1" stop-color="#c7bda8"/>
+          </linearGradient>
+          <linearGradient id="ped" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#efe9dd"/>
+            <stop offset="1" stop-color="#b9ae98"/>
+          </linearGradient>
+        </defs>
+        <g class="bust">
+          <!-- Sockel -->
+          <rect x="45" y="246" width="110" height="12" rx="2" fill="url(#ped)" stroke="#9e9480"/>
+          <rect x="55" y="256" width="90" height="30" fill="url(#ped)" stroke="#9e9480"/>
+          <rect x="40" y="284" width="120" height="14" rx="2" fill="url(#ped)" stroke="#9e9480"/>
+          <text x="100" y="275" text-anchor="middle" font-family="Cinzel, serif" font-size="9.5" font-weight="700" fill="#6b5d45" letter-spacing="1">ΑΡΙΣΤΟΤΕΛΗΣ</text>
+          <!-- Schultern / Toga -->
+          <path d="M28 248 Q32 196 72 184 L100 192 L128 184 Q168 196 172 248 Z" fill="url(#marble)" stroke="#a89d86" stroke-width="1.5"/>
+          <path d="M60 192 Q80 220 78 248 M140 192 Q125 215 132 248 M92 200 Q100 225 96 248" fill="none" stroke="#b8ad97" stroke-width="2"/>
+          <path d="M128 184 Q150 200 160 236" fill="none" stroke="#b8ad97" stroke-width="2"/>
+          <!-- Hals -->
+          <path d="M84 160 L84 190 Q100 198 116 190 L116 160 Z" fill="url(#marble)" stroke="#a89d86" stroke-width="1.2"/>
+          <g class="head">
+            <!-- Kopf -->
+            <ellipse cx="100" cy="104" rx="37" ry="46" fill="url(#marble)" stroke="#a89d86" stroke-width="1.5"/>
+            <!-- Ohren -->
+            <ellipse cx="63" cy="108" rx="6" ry="11" fill="#e6dfd0" stroke="#a89d86"/>
+            <ellipse cx="137" cy="108" rx="6" ry="11" fill="#e6dfd0" stroke="#a89d86"/>
+            <!-- Haar (kurz, lockig) -->
+            <g fill="#e9e2d4" stroke="#a89d86" stroke-width="1.2">
+              <circle cx="72" cy="78" r="9"/><circle cx="84" cy="68" r="9"/><circle cx="98" cy="63" r="9"/>
+              <circle cx="112" cy="66" r="9"/><circle cx="125" cy="74" r="9"/><circle cx="132" cy="87" r="7"/>
+              <circle cx="67" cy="90" r="7"/>
+            </g>
+            <!-- Stirnfalten -->
+            <path d="M84 86 Q100 82 116 86 M86 92 Q100 89 114 92" fill="none" stroke="#bdb29c" stroke-width="1.2"/>
+            <!-- Augenbrauen -->
+            <path d="M78 101 Q87 96 95 100 M105 100 Q113 96 122 101" fill="none" stroke="#9e9480" stroke-width="2.2" stroke-linecap="round"/>
+            <!-- Augen (Marmor: geschlossen/leer) -->
+            <path d="M80 108 Q87 104 94 108 Q87 111 80 108 Z M106 108 Q113 104 120 108 Q113 111 106 108 Z" fill="#d9d1c0" stroke="#9e9480" stroke-width="1.2"/>
+            <!-- Nase -->
+            <path d="M100 104 L97 126 Q100 130 104 127" fill="none" stroke="#9e9480" stroke-width="1.6" stroke-linecap="round"/>
+            <!-- Bart -->
+            <path d="M66 116 Q68 150 84 166 Q100 178 116 166 Q132 150 134 116 Q126 132 116 134 Q100 128 84 134 Q74 132 66 116 Z" fill="#e4dccc" stroke="#a89d86" stroke-width="1.4"/>
+            <g fill="none" stroke="#b8ad97" stroke-width="1.4" stroke-linecap="round">
+              <path d="M76 142 q4 6 0 12"/><path d="M86 146 q4 6 0 12"/><path d="M96 148 q4 7 0 14"/>
+              <path d="M106 148 q4 7 0 14"/><path d="M116 146 q4 6 0 12"/><path d="M125 142 q3 6 -1 11"/>
+            </g>
+            <!-- Schnurrbart & Mund -->
+            <path d="M84 134 Q92 128 100 132 Q108 128 116 134" fill="none" stroke="#9e9480" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M93 139 Q100 142 107 139" fill="none" stroke="#9e9480" stroke-width="1.4" stroke-linecap="round"/>
+          </g>
+        </g>
+      </svg>
+    </aside>
+
+    <div class="column" aria-hidden="true"><div class="capital"></div><div class="shaft"></div><div class="base"></div></div>
+  </main>
+  <div class="meander bottom"></div>
+ </div>
+</div>
+
+<script>
+  const QUESTIONS = [
+    "Kann man ein gutes Leben führen, auch wenn man seine Ziele nicht erreicht?",
+    "Ist es wichtiger, glücklich zu sein oder andere Menschen glücklich zu machen?",
+    "Kann man sein Ergon im Laufe des Lebens verändern?",
+    "Ist jemand, der besonders gut Fußball spielt, automatisch ein guter Mensch?",
+    "Kann man ein gutes Leben führen, wenn man immer nur an sich selbst denkt?"
+  ];
+
+  const SAYINGS = [
+    "Denkt gut nach – und begründet eure Antwort!",
+    "Was meint ihr? Und vor allem: warum?",
+    "Eine gute Frage ist schon der halbe Weg zur Weisheit.",
+    "Hört einander zu – vielleicht hat der andere auch recht.",
+    "Hmm … darüber habe ich in Athen auch lange nachgedacht.",
+    "Gibt es ein Beispiel aus eurem Leben dazu?"
+  ];
+
+  const ROMAN = ["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"];
+
+  const chest = document.getElementById('chest');
+  const scroll = document.getElementById('scroll');
+  const qEl = document.getElementById('question');
+  const numEl = document.getElementById('num');
+  const btn = document.getElementById('drawBtn');
+  const counter = document.getElementById('counter');
+  const bubble = document.getElementById('bubble');
+  const aristotle = document.getElementById('aristotle');
+
+  let bag = [];
+  let lastIdx = -1;
+  let sayIdx = -1;
+  let busy = false;
+  let shownOnce = false;
+
+  function refill(){
+    bag = QUESTIONS.map((_, i) => i);
+    for (let i = bag.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [bag[i], bag[j]] = [bag[j], bag[i]];
+    }
+    // nicht direkt dieselbe Frage wie zuletzt
+    if (bag.length > 1 && bag[bag.length - 1] === lastIdx){
+      [bag[0], bag[bag.length - 1]] = [bag[bag.length - 1], bag[0]];
+    }
+  }
+
+  function updateCounter(){
+    const n = bag.length;
+    if (!shownOnce){ counter.textContent = `${QUESTIONS.length} Fragen warten in der Kiste.`; return; }
+    counter.textContent = n === 0
+      ? "Alle Fragen gezogen – beim nächsten Mal wird neu gemischt."
+      : `Noch ${n} ${n === 1 ? "Frage" : "Fragen"} in der Kiste.`;
+  }
+
+  function say(text){
+    bubble.classList.add('fade');
+    setTimeout(() => { bubble.textContent = text; bubble.classList.remove('fade'); }, 350);
+    aristotle.classList.remove('nod'); void aristotle.offsetWidth; aristotle.classList.add('nod');
+  }
+
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+
+  async function draw(){
+    if (busy) return;
+    busy = true; btn.disabled = true;
+
+    // vorherige Rolle zurück in die Kiste
+    if (shownOnce){
+      scroll.classList.remove('open');
+      await wait(650);
+      scroll.classList.remove('up');
+      await wait(550);
+      chest.classList.remove('open');
+      await wait(450);
+    }
+
+    if (bag.length === 0) refill();
+    const idx = bag.pop();
+    lastIdx = idx;
+    shownOnce = true;
+
+    qEl.textContent = QUESTIONS[idx];
+    numEl.textContent = "FRAGE " + ROMAN[idx];
+
+    chest.classList.remove('shake'); void chest.offsetWidth; chest.classList.add('shake');
+    await wait(560);
+    chest.classList.add('open');
+    await wait(350);
+    scroll.classList.add('up');
+    await wait(800);
+    scroll.classList.add('open');
+
+    let s; do { s = Math.floor(Math.random() * SAYINGS.length); } while (s === sayIdx);
+    sayIdx = s;
+    say(SAYINGS[s]);
+
+    updateCounter();
+    btn.textContent = "Nächste Frage";
+    await wait(600);
+    busy = false; btn.disabled = false;
+  }
+
+  btn.addEventListener('click', draw);
+  chest.addEventListener('click', draw);
+  document.addEventListener('keydown', e => {
+    if ((e.code === 'Space' || e.code === 'Enter') && document.activeElement !== btn){
+      e.preventDefault(); draw();
+    }
+  });
+
+  refill();
+  updateCounter();
+</script>
+<script>
+  // Tafel immer passend auf den Bildschirm skalieren (Medientafel, iPad, Laptop)
+  const board = document.getElementById('board');
+  function fit(){
+    const w = window.innerWidth, h = window.innerHeight;
+    board.style.setProperty('--s', Math.min(w / 1600, h / 900));
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', () => setTimeout(fit, 250));
+  fit();
+
+  // Vollbild-Knopf (wo der Browser es erlaubt)
+  const fsBtn = document.getElementById('fsBtn');
+  const root = document.documentElement;
+  const canFs = !!(root.requestFullscreen || root.webkitRequestFullscreen);
+  const isFs = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  if (canFs){
+    fsBtn.hidden = false;
+    fsBtn.addEventListener('click', () => {
+      try{
+        if (isFs()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+        else (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
+      }catch(e){}
+    });
+    const upd = () => { fsBtn.textContent = isFs() ? '✕ Vollbild beenden' : '⛶ Vollbild'; setTimeout(fit, 100); };
+    document.addEventListener('fullscreenchange', upd);
+    document.addEventListener('webkitfullscreenchange', upd);
+  }
+  // Doppeltipp-Zoom auf dem iPad verhindern
+  let lastTouch = 0;
+  document.addEventListener('touchend', e => { const n = Date.now(); if (n - lastTouch < 350) e.preventDefault(); lastTouch = n; }, {passive:false});
+</script>
+</body>
+</html>
